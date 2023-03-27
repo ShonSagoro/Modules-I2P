@@ -3,6 +3,9 @@ import dotenv from "dotenv";
 import io from "socket.io-client";
 import express from 'express';
 import fetch from "node-fetch";
+import FormData from "form-data";
+import Readable from "stream";
+const formData = new FormData();
 const app = express();
 
 dotenv.config();
@@ -22,14 +25,16 @@ const protocol=process.env.PROTOCOL;
 const user=process.env.USER;
 const password=process.env.PASSWORD;
 const port=process.env.PORT;
-const queueInit=process.env.QUEUE_INIT;
 
-const queueNotiU=process.env.QUEUE_NOTI_U;
+
 const exchangeName = process.env.EXCHANGENAME;
 const exchangeType = process.env.EXCHANGETYPE;
 const routingKey = process.env.ROUTINGKEY;
 
+const queueInit=process.env.QUEUE_INIT;
+const queueNotiU=process.env.QUEUE_NOTI_U;
 const queueLoginReq=process.env.QUEUE_REQUEST_LOGIN;
+const queueRegisterReq=process.env.QUEUE_REQUEST_REG;
 
 
 const rabbitSettings={
@@ -70,6 +75,9 @@ console.log('canal notification user hecho de manera exitosa');
 const channelLoginReq=await createChannel(connected, queueLoginReq);
 console.log('canal notification user hecho de manera exitosa');
 
+const channelRegisterReq=await createChannel(connected, queueRegisterReq);
+console.log('canal notification user hecho de manera exitosa');
+
 
 
 channelInit.consume(queueInit,(msg)=>{
@@ -94,11 +102,22 @@ channelNotiU.consume(queueNotiU,(msg)=>{
     }
 })
 
-channelLoginReq.consume(queueLoginReq,(msg)=>{
-    if(msg!==null){
+channelLoginReq.consume(queueLoginReq,(form)=>{
+    if(form!==null){
         console.log('recived: ', JSON.parse(msg.content.toString()));
-        login(JSON.parse(msg.content.toString()));
-        channelLoginReq.ack(msg); //lo saca de la cola
+        login(JSON.parse(form.content.toString()));
+        channelLoginReq.ack(form); //lo saca de la cola
+    }else{
+        console.log('Consumer cancelled by server');
+    }
+})
+
+
+channelRegisterReq.consume(queueRegisterReq,(form)=>{
+    if(form!==null){
+        console.log('recived: ', JSON.parse(form.content.toString()));
+        registerUser(JSON.parse(form.content.toString()))
+        channelRegisterReq.ack(form); //lo saca de la cola
     }else{
         console.log('Consumer cancelled by server');
     }
@@ -130,9 +149,9 @@ const login= async(form)=>{
             password: form.password
         })
     })
-    .then(async response => {
+    .then(response => {
         const token = response.headers.get('authorization');
-        await getUserByEmail(form.email, token);
+        getUserByEmail(form.email, token);
         return response.headers.get('authorization');
     })
     .then(data=>{console.log(data)})
@@ -153,20 +172,56 @@ const getUserByEmail=(email, token)=>{
     })
     .then(data =>{
         console.log(data);
-        sendAPILogin(token, data)
+        sendLoginInfoToRabbit(token, data)
     })
     .catch(error => console.error("error",error));
     
 }
 
-const sendAPILogin=async(token, data)=>{
+const registerUser=(form)=>{
+    fetch(`http://localhost:8080/user/reg`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+          },
+        body: JSON.stringify({
+            email: form.email,
+            name: form.name,
+            password: form.password
+        })
+    })
+    .then(response => {
+        if(response.status===201){
+            return response.json();
+        }else{
+            return false;
+        }
+    })
+    .then(data =>{
+        console.log(data);
+        sendRegisterInfoToRabbit(data);
+    })
+    .catch(error => console.error("error",error));
+}
+
+
+const sendLoginInfoToRabbit=async(token, data)=>{
     const queueLoginRes=process.env.QUEUE_RESPONSE_LOGIN;
-    const channelLoginRes=await connected.createChannel(queueLoginRes);
-    console.log('canal notification user hecho de manera exitosa');
+    const channeRes=await connected.createChannel(queueLoginRes);
+    console.log('canal login response user hecho de manera exitosa');
     const response={token: token, data:data}
-    channelLoginRes.sendToQueue(queueLoginRes, Buffer.from(JSON.stringify(response)));
+    channeRes.sendToQueue(queueLoginRes, Buffer.from(JSON.stringify(response)));
     console.log('respuesta enviada a la cola', response);
     
+}
+
+const sendRegisterInfoToRabbit=async(info)=>{
+    const queueRegisterRes=process.env.QUEUE_RESPONSE_REG;
+    const channelRes=await connected.createChannel(queueRegisterRes);
+    console.log('canal register response user hecho de manera exitosa');
+
+    channelRes.sendToQueue(queueRegisterRes, Buffer.from(JSON.stringify(info)));
+    console.log('respuesta enviada a la cola', info);
 }
 
 
