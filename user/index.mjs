@@ -96,11 +96,9 @@ channelNotiU.consume(queueNotiU,(msg)=>{
 
 channelLoginReq.consume(queueLoginReq,(msg)=>{
     if(msg!==null){
-        handleInitialEvent(channelInit);
-        console.log('recived: ', msg.content.toString());
-
-        channelInit.ack(msg); //lo saca de la cola
-       
+        console.log('recived: ', JSON.parse(msg.content.toString()));
+        login(JSON.parse(msg.content.toString()));
+        channelLoginReq.ack(msg); //lo saca de la cola
     }else{
         console.log('Consumer cancelled by server');
     }
@@ -122,33 +120,57 @@ const sendSocket= async()=>{
 }
 
 const login= async(form)=>{
-    axios.post('http://localhost:8080/login', {
-        email:form.email,
-        password:form.password,
-      })
-      .then(function (response) {
-        console.log(response);
-        //crea canal
-        sendAPILogin(response); 
-        console.log('canal notification user hecho de manera exitosa');
-      })
-      .catch(function (error) {
-        console.log(error);
-      });
+    fetch(`http://localhost:8080/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            email: form.email,
+            password: form.password
+        })
+    })
+    .then(async response => {
+        const token = response.headers.get('authorization');
+        await getUserByEmail(form.email, token);
+        return response.headers.get('authorization');
+    })
+    .then(data=>{console.log(data)})
+    .catch(error => console.error(error));
 }
 
-const sendAPILogin=async(response)=>{
+const getUserByEmail=(email, token)=>{
+    const headers={ 'Content-Type': 'application/json', 'Authorization': token };
+    fetch(`http://localhost:8080/user/get/email`, {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify({
+            email: email
+        })
+    })
+    .then(response => {
+        return response.json();
+    })
+    .then(data =>{
+        console.log(data);
+        sendAPILogin(token, data)
+    })
+    .catch(error => console.error("error",error));
+    
+}
+
+const sendAPILogin=async(token, data)=>{
     const queueLoginRes=process.env.QUEUE_RESPONSE_LOGIN;
     const channelLoginRes=await connected.createChannel(queueLoginRes);
     console.log('canal notification user hecho de manera exitosa');
-    
-    channelLoginRes.sendToQueue(queue, Buffer.from(JSON.stringify(response)));
+    const response={token: token, data:data}
+    channelLoginRes.sendToQueue(queueLoginRes, Buffer.from(JSON.stringify(response)));
     console.log('respuesta enviada a la cola', response);
     
 }
-var requestOptions = {
-    method: 'GET',
-    redirect: 'follow'
-  };
-  
+
+
+
+
+    
 
