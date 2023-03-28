@@ -125,6 +125,3 @@ const sendToResponseSystemQueue=async(response)=>{
     channelSystemRes.sendToQueue(queueRes, Buffer.from(JSON.stringify(response)));
     console.log('respuesta enviada a la cola');
 }
-
-
-  

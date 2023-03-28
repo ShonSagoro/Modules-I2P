@@ -223,9 +223,3 @@ const sendRegisterInfoToRabbit=async(info)=>{
     channelRes.sendToQueue(queueRegisterRes, Buffer.from(JSON.stringify(info)));
     console.log('respuesta enviada a la cola', info);
 }
-
-
-
-
-    
-
