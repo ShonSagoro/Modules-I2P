@@ -7,14 +7,14 @@ const app = express();
 dotenv.config();
 
 const HOSTNAME = '127.0.0.1';
-const PORTSERVER = process.env.PORTSERVER || 3000;
+const PORTSERVER = process.env.PORTSERVER || 4002;
 
 
 app.listen(PORTSERVER,HOSTNAME, () => {
     console.log(`Servidor funcionando en el puerto ${PORTSERVER} y el hostname: ${HOSTNAME}`);
 });
 
-const socket = io("http://127.0.0.1:4000");
+const socket = io("http://3.133.107.127:4000");
 
 
 const hostname=process.env.HOST||'localhost';
@@ -113,7 +113,7 @@ const sendSocket= async()=>{
 }
 
 const askList=(idUser)=>{
-    fetch(`http://localhost:8080/system/user/${idUser}/systems`)
+    fetch(`http://3.133.125.251:8080/system/user/${idUser}/systems`)
         .then(response => response.json())
         .then(data =>{
             console.log(data);

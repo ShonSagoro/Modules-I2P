@@ -3,14 +3,11 @@ import dotenv from "dotenv";
 import io from "socket.io-client";
 import express from 'express';
 import fetch from "node-fetch";
-import FormData from "form-data";
-import Readable from "stream";
-const formData = new FormData();
 const app = express();
 
 dotenv.config();
 
-const socket = io("http://127.0.0.1:4000");
+const socket = io("http://3.133.107.127:4000");
 const HOSTNAME = '127.0.0.1';
 const PORTSERVER = process.env.PORTSERVER || 3000;
 
@@ -139,7 +136,7 @@ const sendSocket= async()=>{
 }
 
 const login= async(form)=>{
-    fetch(`http://localhost:8080/login`, {
+    fetch(`http://3.133.125.251:8080/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -160,7 +157,7 @@ const login= async(form)=>{
 
 const getUserByEmail=(email, token)=>{
     const headers={ 'Content-Type': 'application/json', 'Authorization': token };
-    fetch(`http://localhost:8080/user/get/email`, {
+    fetch(`http://3.133.125.251:8080/user/get/email`, {
         method: 'POST',
         headers: headers,
         body: JSON.stringify({
@@ -179,7 +176,7 @@ const getUserByEmail=(email, token)=>{
 }
 
 const registerUser=(form)=>{
-    fetch(`http://localhost:8080/user/reg`, {
+    fetch(`http://3.133.125.251:8080/user/reg`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -209,7 +206,9 @@ const sendLoginInfoToRabbit=async(token, data)=>{
     const queueLoginRes=process.env.QUEUE_RESPONSE_LOGIN;
     const channeRes=await connected.createChannel(queueLoginRes);
     console.log('canal login response user hecho de manera exitosa');
+
     const response={token: token, data:data}
+
     channeRes.sendToQueue(queueLoginRes, Buffer.from(JSON.stringify(response)));
     console.log('respuesta enviada a la cola', response);
     
