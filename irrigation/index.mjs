@@ -19,6 +19,7 @@ const hostname=process.env.HOST||'localhost';
 const protocol=process.env.PROTOCOL;
 const user=process.env.USER;
 const password=process.env.PASSWORD;
+const queueChangeRes=process.env.QUEUE_CHANGE_IRRIGATION_RESPONSE;
 const port=process.env.PORT;
 
 //queues
@@ -80,10 +81,10 @@ channelNotiI.consume(queueNotiI,(msg)=>{
 
 channelChange.consume(queueChange,(request)=>{
     if(request){
-        const objectReceive=JSON.parse(request.content.toString())
-        console.log('information receive:',objectReceive);
-        askList(objectReceive);
-        channelChange.ack(request);
+        const objectReceive=JSON.parse(data.content.toString());
+        console.log('recived: ',objectReceive);
+        sendResponse(queueChangeRes,objectReceive);
+        channelChange.ack(data);
     }else{
         console.log('Consumer Change cancelled by server');
     }
@@ -110,22 +111,24 @@ const sendSocket= async()=>{
     socket.emit('identify',idObject)
 }
 
-const askList=(data)=>{
-    fetch(`http://3.133.125.251:8080/irrigation/system/${data.id}/risks`)
+const askList=(request)=>{
+    let objectResponse;
+    fetch(`http://3.133.125.251:8080/irrigation/system/${request.id}/risks`)
         .then(response => response.json())
         .then(data =>{
             console.log(data);
-            sendToResponseSystemQueue(data, request);
+            objectResponse={response: data, socket: request.socket}
+            sendResponse(queueRes,objectResponse);
         })
         .catch(error => console.error(error));
 }
 
 
-const sendToResponseSystemQueue=async(response, data)=>{
-    const objectSend={
-        socket: data.socket,
-        reponse: response
-    }
-    channelSystemRes.sendToQueue(queueRes, Buffer.from(JSON.stringify(objectSend)));
+const sendResponse=async(response, queue)=>{
+    const connected = await connect();
+    const channel = await connected.createChannel(queue);
+    console.log(object);
+    channel.sendToQueue(queue, Buffer.from(JSON.stringify(response)));
     console.log('respuesta enviada a la cola');
 }
+

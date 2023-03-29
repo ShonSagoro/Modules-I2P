@@ -170,7 +170,7 @@ const getUserByEmail=(form, token)=>{
     })
     .then(data =>{
         console.log(data);
-        sendLoginInfoToRabbit(token, data, form.socket)
+        sendLoginInfoToRabbit(token, data, form.socketId)
     })
     .catch(error => console.error("error",error));
     
@@ -197,7 +197,7 @@ const registerUser=(form)=>{
     })
     .then(data =>{
         console.log(data);
-        sendRegisterInfoToRabbit(data, form.socket);
+        sendRegisterInfoToRabbit(data, form.socketId);
     })
     .catch(error => console.error("error",error));
 }
@@ -208,7 +208,7 @@ const sendLoginInfoToRabbit=async(token, data, socket)=>{
     const channeRes=await connected.createChannel(queueLoginRes);
     console.log('canal login response user hecho de manera exitosa');
 
-    const response={token: token, data:data, socket: socket}
+    const response={token: token, data:data, socketId: socket}
 
     channeRes.sendToQueue(queueLoginRes, Buffer.from(JSON.stringify(response)));
     console.log('respuesta enviada a la cola', response);
@@ -220,7 +220,7 @@ const sendRegisterInfoToRabbit=async(info, socket)=>{
     const channelRes=await connected.createChannel(queueRegisterRes);
     console.log('canal register response user hecho de manera exitosa');
 
-    const response={data:info, socket: socket}
+    const response={data:info, socketId: socket}
 
     channelRes.sendToQueue(queueRegisterRes, Buffer.from(JSON.stringify(response)));
     console.log('respuesta enviada a la cola', info);

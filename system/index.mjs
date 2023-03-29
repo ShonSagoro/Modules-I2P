@@ -28,6 +28,7 @@ const port=process.env.PORT;
 const queueNotiS=process.env.QUEUE_NOTI_S;
 const queueReq=process.env.QUEUE_REQUEST_SYSTEM;
 const queueChange=process.env.QUEUE_CHANGE_SYSTEM;
+const queueChangeRes=process.env.QUEUE_CHANGE_RESPONSE_SYSTEM;
 const queueRes=process.env.QUEUE_RESPONSE_SYSTEM;
 
 const rabbitSettings={
@@ -60,9 +61,6 @@ const connected=await connect();
 const channelNotiS=await createChannel(connected, queueNotiS);
 console.log('canal notifiaction system hecho de manera exitosa');
 
-const channelSystemRes= await createChannel(connected, queueRes);
-console.log('canal notifiaction system hecho de manera exitosa');
-
 const channelChange= await createChannel(connected, queueChange);
 console.log('canal notifiaction system hecho de manera exitosa');
 
@@ -85,8 +83,8 @@ channelChange.consume(queueChange,(data)=>{
     if(data){
         const objectReceive=JSON.parse(data.content.toString());
         console.log('recived: ',objectReceive);
-        askList(objectReceive);
-        channelChange.ack(idObject);
+        sendResponse(queueChangeRes,objectReceive);
+        channelChange.ack(data);
     }else{
         console.log('Consumer Change cancelled by server');
     }
@@ -103,8 +101,6 @@ channelSystemReq.consume(queueReq,(data)=>{
     }
 });
 
-
-
 const sendSocket= async()=>{
     const idObject={
         id: socket.id,
@@ -113,19 +109,24 @@ const sendSocket= async()=>{
     socket.emit('identify',idObject)
 }
 
-const askList=(objectReceive)=>{
-    fetch(`http://3.133.125.251:8080/system/user/${objectReceive.id}/systems`)
+const askList=(request)=>{
+    let objectResponse;
+    fetch(`http://3.133.125.251:8080/system/user/${request.id}/systems`)
         .then(response => response.json())
         .then(data =>{
             console.log(data);
-            sendToResponseSystemQueue(data, objectReceive.socket);
+            objectResponse={response: data, socket: request.socket}
+            sendResponse(queueRes, objectResponse);
         })
         .catch(error => console.error(error));
 }
 
 
-const sendToResponseSystemQueue=async(response, socket)=>{
-    const objectSend={response: response, socket:socket}
-    channelSystemRes.sendToQueue(queueRes, Buffer.from(JSON.stringify(objectSend)));
+const sendResponse=async(response, queue)=>{
+    const connected = await connect();
+    const channel = await connected.createChannel(queue);
+    console.log(object);
+    channel.sendToQueue(queue, Buffer.from(JSON.stringify(response)));
     console.log('respuesta enviada a la cola');
 }
+
