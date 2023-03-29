@@ -115,17 +115,17 @@ const askList=(request)=>{
         .then(response => response.json())
         .then(data =>{
             console.log(data);
-            objectResponse={response: data, socket: request.socket}
+            objectResponse={response: data, socketId: request.socketId}
             sendResponse(queueRes, objectResponse);
         })
         .catch(error => console.error(error));
 }
 
 
-const sendResponse=async(response, queue)=>{
+const sendResponse=async(queue, response)=>{
     const connected = await connect();
     const channel = await connected.createChannel(queue);
-    console.log(object);
+    console.log(response);
     channel.sendToQueue(queue, Buffer.from(JSON.stringify(response)));
     console.log('respuesta enviada a la cola');
 }

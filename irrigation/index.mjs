@@ -50,6 +50,7 @@ async function connect() {
 async function createChannel(connection, queue) {
     const channel = await connection.createChannel();
     await channel.assertQueue(queue);
+    console.log("canal activo")
     return channel;
 }
 
@@ -58,7 +59,6 @@ const connected=await connect();
 const channelNotiI=await createChannel(connected, queueNotiI);
 console.log('canal notifiaction system hecho de manera exitosa');
 
-const channelSystemRes= await createChannel(connected, queueRes);
 console.log('canal notifiaction system hecho de manera exitosa');
 
 const channelChange= await createChannel(connected, queueChange);
@@ -81,10 +81,10 @@ channelNotiI.consume(queueNotiI,(msg)=>{
 
 channelChange.consume(queueChange,(request)=>{
     if(request){
-        const objectReceive=JSON.parse(data.content.toString());
+        const objectReceive=JSON.parse(request.content.toString());
         console.log('recived: ',objectReceive);
         sendResponse(queueChangeRes,objectReceive);
-        channelChange.ack(data);
+        channelChange.ack(request);
     }else{
         console.log('Consumer Change cancelled by server');
     }
@@ -117,17 +117,17 @@ const askList=(request)=>{
         .then(response => response.json())
         .then(data =>{
             console.log(data);
-            objectResponse={response: data, socket: request.socket}
+            objectResponse={response: data, socketId: request.socketId}
             sendResponse(queueRes,objectResponse);
         })
         .catch(error => console.error(error));
 }
 
 
-const sendResponse=async(response, queue)=>{
+const sendResponse=async(queue,response)=>{
     const connected = await connect();
     const channel = await connected.createChannel(queue);
-    console.log(object);
+    console.log(response);
     channel.sendToQueue(queue, Buffer.from(JSON.stringify(response)));
     console.log('respuesta enviada a la cola');
 }
