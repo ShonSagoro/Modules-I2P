@@ -78,25 +78,25 @@ channelNotiI.consume(queueNotiI,(msg)=>{
     }
 });
 
-channelChange.consume(queueChange,(idObject)=>{
-    if(idObject){
-        const id=JSON.parse(idObject.content.toString())
-        console.log(id);
-        askList(id);
-        channelChange.ack(idObject);
+channelChange.consume(queueChange,(request)=>{
+    if(request){
+        const objectReceive=JSON.parse(request.content.toString())
+        console.log('information receive:',objectReceive);
+        askList(objectReceive);
+        channelChange.ack(request);
     }else{
-        console.log('Consumer Noti cancelled by server');
+        console.log('Consumer Change cancelled by server');
     }
 });
 
-channelSystemReq.consume(queueReq,(idObject)=>{
-    if(idObject){
-        const id=JSON.parse(idObject.content.toString());
-        console.log('recived: ', id);
-        askList(id);
-        channelSystemReq.ack(idObject);
+channelSystemReq.consume(queueReq,(request)=>{
+    if(request){
+        const objectReceive=JSON.parse(request.content.toString());
+        console.log('recived: ', objectReceive);
+        askList(objectReceive);
+        channelSystemReq.ack(request);
     }else{
-        console.log('Consumer Noti cancelled by server');
+        console.log('Consumer request cancelled by server');
     }
 });
 
@@ -110,18 +110,22 @@ const sendSocket= async()=>{
     socket.emit('identify',idObject)
 }
 
-const askList=(idSystem)=>{
-    fetch(`http://3.133.125.251:8080/irrigation/system/${idSystem}/risks`)
+const askList=(data)=>{
+    fetch(`http://3.133.125.251:8080/irrigation/system/${data.id}/risks`)
         .then(response => response.json())
         .then(data =>{
             console.log(data);
-            sendToResponseSystemQueue(data);
+            sendToResponseSystemQueue(data, request);
         })
         .catch(error => console.error(error));
 }
 
 
-const sendToResponseSystemQueue=async(response)=>{
-    channelSystemRes.sendToQueue(queueRes, Buffer.from(JSON.stringify(response)));
+const sendToResponseSystemQueue=async(response, data)=>{
+    const objectSend={
+        socket: data.socket,
+        reponse: response
+    }
+    channelSystemRes.sendToQueue(queueRes, Buffer.from(JSON.stringify(objectSend)));
     console.log('respuesta enviada a la cola');
 }

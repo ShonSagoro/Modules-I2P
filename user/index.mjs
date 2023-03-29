@@ -7,7 +7,7 @@ const app = express();
 
 dotenv.config();
 
-const socket = io("http://3.133.107.127:4000");
+const socket = io("http://127.0.0.1:4000");
 const HOSTNAME = '127.0.0.1';
 const PORTSERVER = process.env.PORTSERVER || 3000;
 
@@ -28,6 +28,7 @@ const exchangeName = process.env.EXCHANGENAME;
 const exchangeType = process.env.EXCHANGETYPE;
 const routingKey = process.env.ROUTINGKEY;
 
+//rabbit queue
 const queueInit=process.env.QUEUE_INIT;
 const queueNotiU=process.env.QUEUE_NOTI_U;
 const queueLoginReq=process.env.QUEUE_REQUEST_LOGIN;
@@ -76,7 +77,7 @@ const channelRegisterReq=await createChannel(connected, queueRegisterReq);
 console.log('canal notification user hecho de manera exitosa');
 
 
-
+//chanell listener
 channelInit.consume(queueInit,(msg)=>{
     if(msg!==null){
         handleInitialEvent(channelInit);
@@ -101,7 +102,7 @@ channelNotiU.consume(queueNotiU,(msg)=>{
 
 channelLoginReq.consume(queueLoginReq,(form)=>{
     if(form!==null){
-        console.log('recived: ', JSON.parse(msg.content.toString()));
+        console.log('recived: ', JSON.parse(form.content.toString()));
         login(JSON.parse(form.content.toString()));
         channelLoginReq.ack(form); //lo saca de la cola
     }else{
@@ -132,7 +133,7 @@ const sendSocket= async()=>{
         id: socket.id,
         module:'user'
     }
-    socket.emit('identify',idObject)
+    socket.emit('identify',idObject); //falta por probar
 }
 
 const login= async(form)=>{
@@ -148,20 +149,20 @@ const login= async(form)=>{
     })
     .then(response => {
         const token = response.headers.get('authorization');
-        getUserByEmail(form.email, token);
+        getUserByEmail(form, token);
         return response.headers.get('authorization');
     })
     .then(data=>{console.log(data)})
     .catch(error => console.error(error));
 }
 
-const getUserByEmail=(email, token)=>{
+const getUserByEmail=(form, token)=>{
     const headers={ 'Content-Type': 'application/json', 'Authorization': token };
     fetch(`http://3.133.125.251:8080/user/get/email`, {
         method: 'POST',
         headers: headers,
         body: JSON.stringify({
-            email: email
+            email: form.email
         })
     })
     .then(response => {
@@ -169,7 +170,7 @@ const getUserByEmail=(email, token)=>{
     })
     .then(data =>{
         console.log(data);
-        sendLoginInfoToRabbit(token, data)
+        sendLoginInfoToRabbit(token, data, form.socket)
     })
     .catch(error => console.error("error",error));
     
@@ -196,29 +197,31 @@ const registerUser=(form)=>{
     })
     .then(data =>{
         console.log(data);
-        sendRegisterInfoToRabbit(data);
+        sendRegisterInfoToRabbit(data, form.socket);
     })
     .catch(error => console.error("error",error));
 }
 
 
-const sendLoginInfoToRabbit=async(token, data)=>{
+const sendLoginInfoToRabbit=async(token, data, socket)=>{
     const queueLoginRes=process.env.QUEUE_RESPONSE_LOGIN;
     const channeRes=await connected.createChannel(queueLoginRes);
     console.log('canal login response user hecho de manera exitosa');
 
-    const response={token: token, data:data}
+    const response={token: token, data:data, socket: socket}
 
     channeRes.sendToQueue(queueLoginRes, Buffer.from(JSON.stringify(response)));
     console.log('respuesta enviada a la cola', response);
     
 }
 
-const sendRegisterInfoToRabbit=async(info)=>{
+const sendRegisterInfoToRabbit=async(info, socket)=>{
     const queueRegisterRes=process.env.QUEUE_RESPONSE_REG;
     const channelRes=await connected.createChannel(queueRegisterRes);
     console.log('canal register response user hecho de manera exitosa');
 
-    channelRes.sendToQueue(queueRegisterRes, Buffer.from(JSON.stringify(info)));
+    const response={data:info, socket: socket}
+
+    channelRes.sendToQueue(queueRegisterRes, Buffer.from(JSON.stringify(response)));
     console.log('respuesta enviada a la cola', info);
 }
